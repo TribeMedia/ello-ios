@@ -730,9 +730,9 @@ public extension AppViewController {
         }
     }
 
-    public func closeTodoController() {
+    public func closeTodoController(completion: (() -> Void)? = nil) {
         isShowingDebug = false
-        dismissViewControllerAnimated(true, completion: nil)
+        dismissViewControllerAnimated(true, completion: completion)
     }
 
 }

@@ -31,24 +31,32 @@ class DebugTodoController: UIViewController, UITableViewDataSource, UITableViewD
 
         let appController = UIApplication.sharedApplication().keyWindow!.rootViewController as! AppViewController
         addAction("Logout") {
-            appController.closeTodoController()
-            delay(0.1) {
+            appController.closeTodoController() {
                 appController.userLoggedOut()
+            }
+        }
+        addAction("Deep Linking") {
+            appController.closeTodoController() {
+                let alertController = AlertViewController()
+
+                let urlAction = AlertAction(title: "Enter URL", style: .URLInput)
+                alertController.addAction(urlAction)
+
+                let okCancelAction = AlertAction(title: "", style: .OKCancel) { _ in
+                    if let urlString = alertController.actionInputs.safeValue(0) {
+                        appController.navigateToDeepLink(urlString)
+                    }
+                }
+                alertController.addAction(okCancelAction)
+
+                appController.presentViewController(alertController, animated: true, completion: nil)
             }
         }
         addAction("ImagePickerSheetController") {
             let controller = ImagePickerSheetController(mediaType: .ImageAndVideo)
-            controller.addAction(ImagePickerAction(title: InterfaceString.ImagePicker.TakePhoto, handler: { _ in
-                print("=============== \(#file) line \(#line) ===============")
-            }))
-            controller.addAction(ImagePickerAction(title: InterfaceString.ImagePicker.PhotoLibrary, secondaryTitle: { NSString.localizedStringWithFormat(InterfaceString.ImagePicker.AddImagesTemplate, $0) as String}, handler: { _ in
-                print("=============== \(#file) line \(#line) ===============")
-            }, secondaryHandler: { _, numberOfPhotos in
-                print("=============== \(#file) line \(#line) ===============")
-            }))
-            controller.addAction(ImagePickerAction(title: InterfaceString.Cancel, style: .Cancel, handler: { _ in
-                print("Cancelled")
-            }))
+            controller.addAction(ImagePickerAction(title: InterfaceString.ImagePicker.TakePhoto, handler: { _ in }))
+            controller.addAction(ImagePickerAction(title: InterfaceString.ImagePicker.PhotoLibrary, secondaryTitle: { NSString.localizedStringWithFormat(InterfaceString.ImagePicker.AddImagesTemplate, $0) as String}, handler: { _ in }, secondaryHandler: { _, numberOfPhotos in }))
+            controller.addAction(ImagePickerAction(title: InterfaceString.Cancel, style: .Cancel, handler: { _ in }))
 
             self.presentViewController(controller, animated: true, completion: nil)
         }
@@ -103,8 +111,7 @@ class DebugTodoController: UIViewController, UITableViewDataSource, UITableViewD
         }
 
         addAction("Show Notification") {
-            appController.closeTodoController()
-            delay(0.5) {
+            appController.closeTodoController() {
                 PushNotificationController.sharedController.receivedNotification(UIApplication.sharedApplication(), userInfo: [
                     "application_target": "notifications/posts/6178",
                     "aps": [
@@ -122,8 +129,7 @@ class DebugTodoController: UIViewController, UITableViewDataSource, UITableViewD
             PushNotificationController.sharedController.permissionDenied = false
             PushNotificationController.sharedController.needsPermission = true
             if let alert = PushNotificationController.sharedController.requestPushAccessIfNeeded() {
-                appController.closeTodoController()
-                delay(0.1) {
+                appController.closeTodoController() {
                     appController.presentViewController(alert, animated: true, completion: .None)
                 }
             }
