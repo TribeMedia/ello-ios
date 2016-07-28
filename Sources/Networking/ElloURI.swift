@@ -67,6 +67,7 @@ public enum ElloURI: String {
     public var loadsInWebViewFromWebView: Bool {
         switch self {
         case .Discover,
+             .Category,
              .Email,
              .Enter,
              .Explore,

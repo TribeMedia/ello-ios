@@ -943,6 +943,13 @@ extension StreamViewController: WebLinkDelegate {
             selectTab(.Discover)
         case .Category:
             selectTab(.Discover)
+
+            if let nav = elloTabBarController?.selectedViewController as? UINavigationController,
+                discoverViewController = nav.childViewControllers[0] as? DiscoverViewController
+            {
+                nav.popToRootViewControllerAnimated(false)
+                discoverViewController.showCategory(data)
+            }
         case .Email: break // this is handled in ElloWebViewHelper
         case .BetaPublicProfiles,
              .Enter,
