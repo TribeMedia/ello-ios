@@ -31,13 +31,12 @@ class ImageRegionSpec: QuickSpec {
                 expect(hdpi.width) == 750
                 expect(hdpi.height) == 321
 
-                let xxhdpi = asset.xxhdpi!
-
-                expect(xxhdpi.url.absoluteString) == "https://example.com/85/xxhdpi.jpg"
-                expect(xxhdpi.size) == 728689
-                expect(xxhdpi.type) == "image/jpeg"
-                expect(xxhdpi.width) == 2560
-                expect(xxhdpi.height) == 1094
+                let xhdpi = asset.xhdpi!
+                expect(xhdpi.url.absoluteString) == "https://example.com/85/xhdpi.jpg"
+                expect(xhdpi.size) == 274363
+                expect(xhdpi.type) == "image/jpeg"
+                expect(xhdpi.width) == 1500
+                expect(xhdpi.height) == 641
             }
 
             it("parses buy-button region correctly") {
@@ -60,13 +59,12 @@ class ImageRegionSpec: QuickSpec {
                 expect(hdpi.width) == 750
                 expect(hdpi.height) == 321
 
-                let xxhdpi = asset.xxhdpi!
-
-                expect(xxhdpi.url.absoluteString) == "https://example.com/85/xxhdpi.jpg"
-                expect(xxhdpi.size) == 728689
-                expect(xxhdpi.type) == "image/jpeg"
-                expect(xxhdpi.width) == 2560
-                expect(xxhdpi.height) == 1094
+                let xhdpi = asset.xhdpi!
+                expect(xhdpi.url.absoluteString) == "https://example.com/85/xhdpi.jpg"
+                expect(xhdpi.size) == 274363
+                expect(xhdpi.type) == "image/jpeg"
+                expect(xhdpi.width) == 1500
+                expect(xhdpi.height) == 641
             }
 
         }

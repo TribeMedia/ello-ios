@@ -16,8 +16,8 @@ class UserSpec: QuickSpec {
                 let originalGif: Attachment = stub(["url": "http://original.gif"])
                 let optimized: Attachment = stub(["url": "http://optimized.png"])
                 let hdpi: Attachment = stub(["url": "http://hdpi.png"])
-                let asset: Asset = stub(["original": originalPng, "hdpi": hdpi, "optimized": optimized])
-                let assetGif: Asset = stub(["original": originalGif, "hdpi": hdpi, "optimized": optimized])
+                let asset: Asset = stub(["original": originalPng, "xhdpi": hdpi, "optimized": optimized])
+                let assetGif: Asset = stub(["original": originalGif, "xhdpi": hdpi, "optimized": optimized])
                 let emptyAsset: Asset = stub([:])
 
                 it("should return nil if there is no image") {
@@ -192,7 +192,7 @@ class UserSpec: QuickSpec {
                         let attachment: Attachment = stub(["url": NSURL(string: "http://www.example.com")!, "height": 0, "width": 0, "type": "png", "size": 0 ])
                         let asset: Asset = stub(["regular" : attachment])
                         let coverAttachment: Attachment = stub(["url": NSURL(string: "http://www.example2.com")!, "height": 0, "width": 0, "type": "png", "size": 0 ])
-                        let coverAsset: Asset = stub(["hdpi" : coverAttachment])
+                        let coverAsset: Asset = stub(["xhdpi" : coverAttachment])
 
                         let user: User = stub([
                             "avatar" : asset,

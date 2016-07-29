@@ -29,7 +29,7 @@ class ProfileServiceSpec: QuickSpec {
                     expect(loadedUser!.id) == "42"
                     expect(loadedUser!.username) == "archer"
                     expect(loadedUser!.formattedShortBio) == "<p>Have been <strong>spying</strong> for a while now.</p>"
-                    expect(loadedUser!.coverImageURL(viewsAdultContent: true)?.absoluteString) == "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/user/cover_image/565/ello-hdpi-768defd5.jpg"
+                    expect(loadedUser!.coverImageURL(viewsAdultContent: true)?.absoluteString) == "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/user/cover_image/565/ello-xhdpi-768defd5.jpg"
                 }
             }
 
