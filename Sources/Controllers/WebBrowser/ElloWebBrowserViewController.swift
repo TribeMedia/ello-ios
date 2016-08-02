@@ -7,6 +7,7 @@ import Crashlytics
 
 public class ElloWebBrowserViewController: KINWebBrowserViewController {
     var toolbarHidden = false
+    var prevRequestURL: NSURL?
     static var currentUser: User?
     static var elloTabBarController: ElloTabBarController?
 
@@ -76,7 +77,15 @@ public class ElloWebBrowserViewController: KINWebBrowserViewController {
 // MARK: ElloWebBrowserViewConteroller: KINWebBrowserDelegate
 extension ElloWebBrowserViewController: KINWebBrowserDelegate {
 
+    public func webBrowser(webBrowser: KINWebBrowserViewController!, didFailToLoadURL url: NSURL?, error: NSError!) {
+        if let url = url ?? prevRequestURL {
+            UIApplication.sharedApplication().openURL(url)
+        }
+        self.navigationController?.dismissViewControllerAnimated(true, completion: nil)
+    }
+
     public func webBrowser(webBrowser: KINWebBrowserViewController!, shouldStartLoadWithRequest request: NSURLRequest!) -> Bool {
+        prevRequestURL = request.URL
         return ElloWebViewHelper.handleRequest(request, webLinkDelegate: self, fromWebView: true)
     }
 
