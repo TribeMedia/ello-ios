@@ -278,12 +278,7 @@ extension User {
         if animated && (!postsAdultContent || viewsAdultContent == true) && coverImage?.original?.url.absoluteString.endsWith(".gif") == true {
             return coverImage?.original?.url
         }
-        if UIDevice.currentDevice().userInterfaceIdiom == .Pad {
-            return coverImage?.original?.url
-        }
-        else {
-            return coverImage?.xhdpi?.url
-        }
+        return coverImage?.xhdpi?.url
     }
 
     public func avatarURL(viewsAdultContent viewsAdultContent: Bool? = false, animated: Bool = false) -> NSURL? {
