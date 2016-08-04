@@ -44,7 +44,7 @@ class StreamKindSpec: QuickSpec {
                     expect(StreamKind.SimpleStream(endpoint: ElloAPI.SearchForPosts(terms: "meat"), title: "meat").cacheKey) == "SearchForPosts"
                     expect(StreamKind.SimpleStream(endpoint: ElloAPI.SearchForUsers(terms: "meat"), title: "meat").cacheKey) == "SimpleStream.meat"
                     expect(StreamKind.Unknown.cacheKey) == "unknown"
-                    expect(StreamKind.UserStream(userParam: "NA").cacheKey) == "UserStream_NA"
+                    expect(StreamKind.UserStream(userParam: "NA").cacheKey) == "UserStream"
                 }
             }
 
@@ -61,7 +61,7 @@ class StreamKindSpec: QuickSpec {
                     expect(StreamKind.SimpleStream(endpoint: ElloAPI.SearchForPosts(terms: "meat"), title: "meat").lastViewedCreatedAtKey) == "SearchForPosts_createdAt"
                     expect(StreamKind.SimpleStream(endpoint: ElloAPI.SearchForUsers(terms: "meat"), title: "meat").lastViewedCreatedAtKey) == "SimpleStream.meat_createdAt"
                     expect(StreamKind.Unknown.lastViewedCreatedAtKey) == "unknown_createdAt"
-                    expect(StreamKind.UserStream(userParam: "NA").lastViewedCreatedAtKey) == "UserStream_NA_createdAt"
+                    expect(StreamKind.UserStream(userParam: "NA").lastViewedCreatedAtKey) == "UserStream_createdAt"
                 }
             }
 

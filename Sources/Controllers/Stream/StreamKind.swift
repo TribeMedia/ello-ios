@@ -48,8 +48,8 @@ public enum StreamKind {
         case .Notifications: return "Notifications"
         case .PostDetail: return "PostDetail"
         case .Unknown: return "unknown"
-        case let .UserStream(userParam):
-            return "UserStream_\(userParam)"
+        case let .UserStream:
+            return "UserStream"
         case let .SimpleStream(endpoint, title):
             switch endpoint {
             case .SearchForPosts:
