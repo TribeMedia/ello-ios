@@ -5,7 +5,7 @@
 import FLAnimatedImage
 
 
-public class ProfileViewController: StreamableViewController {
+public final class ProfileViewController: StreamableViewController {
 
     override public var tabBarItem: UITabBarItem? {
         get { return UITabBarItem.item(.Person) }
@@ -22,6 +22,7 @@ public class ProfileViewController: StreamableViewController {
     var postChangedNotification: NotificationObserver?
     var relationshipChangedNotification: NotificationObserver?
     var deeplinkPath: String?
+    var generator: ProfileGenerator?
     private var isSetup = false
 
     @IBOutlet weak var navigationBar: ElloNavigationBar!
@@ -50,7 +51,12 @@ public class ProfileViewController: StreamableViewController {
         self.userParam = userParam
         self.initialStreamKind = .UserStream(userParam: self.userParam)
         super.init(nibName: "ProfileViewController", bundle: nil)
-
+        if self.user == nil {
+            if let user = ElloLinkedStore.sharedInstance.getObject(self.userParam,
+               inCollection: MappingType.UsersType.rawValue) as? User {
+                self.user = user
+            }
+        }
         sharedInit()
         relationshipChangedNotification = NotificationObserver(notification: RelationshipChangedNotification) { [unowned self] user in
             if self.user?.id == user.id {
@@ -80,7 +86,8 @@ public class ProfileViewController: StreamableViewController {
 
     private func sharedInit() {
         streamViewController.streamKind = initialStreamKind
-        streamViewController.initialLoadClosure = reloadEntireProfile
+        streamViewController.initialLoadClosure = loadProfile
+        streamViewController.reloadClosure = reloadEntireProfile
         streamViewController.toggleClosure = toggleGrid
     }
 
@@ -99,6 +106,13 @@ public class ProfileViewController: StreamableViewController {
 
     override public func viewDidLoad() {
         super.viewDidLoad()
+        self.generator = ProfileGenerator(
+            currentUser: self.currentUser,
+            userParam: userParam,
+            user: self.user,
+            streamKind: self.streamViewController.streamKind,
+            destination: self
+        )
         view.clipsToBounds = true
         coverImage.alpha = 0
         setupNavigationBar()
@@ -127,6 +141,11 @@ public class ProfileViewController: StreamableViewController {
         coverImageHeightStart = maxHeight
 
         gradientLayer.frame.size = gradientView.frame.size
+    }
+
+    override public func didSetCurrentUser() {
+        generator?.currentUser = currentUser
+        super.didSetCurrentUser()
     }
 
     override func showNavBars(scrollToBottom: Bool) {
@@ -193,31 +212,14 @@ public class ProfileViewController: StreamableViewController {
 
     // MARK : private
 
-    private func reloadEntireProfile() {
-        let localToken = streamViewController.resetInitialPageLoadingToken()
+    private func loadProfile() {
         coverImage.alpha = 0
+        generator?.load()
+    }
 
-        streamViewController.streamService.loadUser(
-            initialStreamKind.endpoint,
-            streamKind: initialStreamKind,
-            success: { (user, responseConfig) in
-                if !self.streamViewController.isValidInitialPageLoadingToken(localToken) { return }
-
-                self.userLoaded(user, responseConfig: responseConfig)
-            },
-            failure: { (error, statusCode) in
-                if let deeplinkPath = self.deeplinkPath,
-                    deeplinkURL = NSURL(string: deeplinkPath)
-                {
-                    UIApplication.sharedApplication().openURL(deeplinkURL)
-                    self.deeplinkPath = nil
-                    self.navigationController?.popViewControllerAnimated(true)
-                }
-                else {
-                    self.showUserLoadFailure()
-                }
-                self.streamViewController.doneLoading()
-            })
+    private func reloadEntireProfile() {
+        coverImage.alpha = 0
+        generator?.load(reload: true)
     }
 
     private func showUserLoadFailure() {
@@ -311,9 +313,9 @@ public class ProfileViewController: StreamableViewController {
     }
 
     @IBAction func mentionButtonTapped() {
-        if let user = user {
-            createPost(text: "\(user.atName) ", fromController: self)
-        }
+        guard let user = user else { return }
+
+        createPost(text: "\(user.atName) ", fromController: self)
     }
 
     @IBAction func editButtonTapped() {
@@ -325,101 +327,44 @@ public class ProfileViewController: StreamableViewController {
     }
 
     func moreButtonTapped() {
-        if let user = user {
-            let userId = user.id
-            let userAtName = user.atName
-            let prevRelationshipPriority = user.relationshipPriority
-            streamViewController.relationshipController?.launchBlockModal(userId, userAtName: userAtName, relationshipPriority: prevRelationshipPriority) { newRelationshipPriority in
-                user.relationshipPriority = newRelationshipPriority
-            }
+        guard let user = user else { return }
+
+        let userId = user.id
+        let userAtName = user.atName
+        let prevRelationshipPriority = user.relationshipPriority
+        streamViewController.relationshipController?.launchBlockModal(userId, userAtName: userAtName, relationshipPriority: prevRelationshipPriority) { newRelationshipPriority in
+            user.relationshipPriority = newRelationshipPriority
         }
     }
 
     func sharePostTapped(sourceView: UIView) {
-        if let user = user,
+        guard let user = user,
             shareLink = user.shareLink,
             shareURL = NSURL(string: shareLink)
-        {
-            Tracker.sharedTracker.userShared(user)
-            let activityVC = UIActivityViewController(activityItems: [shareURL], applicationActivities: [SafariActivity()])
-            if UI_USER_INTERFACE_IDIOM() == .Phone {
-                activityVC.modalPresentationStyle = .FullScreen
-                logPresentingAlert(readableClassName() ?? "ProfileViewController")
-                presentViewController(activityVC, animated: true) { }
-            }
-            else {
-                activityVC.modalPresentationStyle = .Popover
-                activityVC.popoverPresentationController?.sourceView = sourceView
-                logPresentingAlert(readableClassName() ?? "ProfileViewController")
-                presentViewController(activityVC, animated: true) { }
-            }
+        else { return }
+
+        Tracker.sharedTracker.userShared(user)
+        let activityVC = UIActivityViewController(activityItems: [shareURL], applicationActivities: [SafariActivity()])
+        if UI_USER_INTERFACE_IDIOM() == .Phone {
+            activityVC.modalPresentationStyle = .FullScreen
+            logPresentingAlert(readableClassName() ?? "ProfileViewController")
+            presentViewController(activityVC, animated: true) { }
+        }
+        else {
+            activityVC.modalPresentationStyle = .Popover
+            activityVC.popoverPresentationController?.sourceView = sourceView
+            logPresentingAlert(readableClassName() ?? "ProfileViewController")
+            presentViewController(activityVC, animated: true) { }
         }
     }
 
     func toggleGrid(isGridView: Bool) {
-        guard let user = user, responseConfig = streamViewController.responseConfig else { return }
-
-        if let headerItems = headerItems {
-            streamViewController.appendStreamCellItems(headerItems)
-        }
-        userLoaded(user, responseConfig: responseConfig, isReload: false)
+        generator?.toggleGrid()
     }
 
-    private func userLoaded(user: User, responseConfig: ResponseConfig, isReload: Bool = true) {
-        self.user = user
-        updateCurrentUser(user)
-
-        relationshipControl.userId = user.id
-        relationshipControl.userAtName = user.atName
-        relationshipControl.relationshipPriority = user.relationshipPriority
-
-        // need to reassign the userParam to the id for paging
-        userParam = user.id
-        title = user.atName ?? InterfaceString.Profile.Title
-        if let cachedImage = cachedImage(.CoverImage) {
-            coverImage.image = cachedImage
-            self.coverImage.alpha = 1.0
-        }
-        else if let cover = user.coverImageURL(viewsAdultContent: currentUser?.viewsAdultContent, animated: true), coverImage = coverImage
-        {
-            coverImage.pin_setImageFromURL(cover) { result in
-                self.coverImage.alpha = 1.0
-            }
-        }
-        var items: [StreamCellItem] = []
-        if isReload {
-            // need to reassign the streamKind so that the currentUser can page based off the user.id from the ElloAPI.path
-            // same for when tapping on a username in a post this will replace '~666' with the correct id for paging to work
-            streamViewController.streamKind = .UserStream(userParam: userParam)
-            streamViewController.responseConfig = responseConfig
-            // clear out this view
-            streamViewController.clearForInitialLoad()
-
-            let headerItems = [
-                StreamCellItem(jsonable: user, type: .ProfileHeader),
-                StreamCellItem(jsonable: user, type: .FullWidthSpacer(height: 3)),
-                StreamCellItem(jsonable: user, type: .ColumnToggle),
-                StreamCellItem(jsonable: user, type: .FullWidthSpacer(height: 5)),
-            ]
-            self.headerItems = headerItems
-            items += headerItems
-        }
-
-        if let posts = user.posts {
-            items += StreamCellItemParser().parse(posts, streamKind: streamViewController.streamKind, currentUser: currentUser)
-        }
-        updateNoPostsView(items.count < 2)
-        // this calls doneLoading when cells are added
-        streamViewController.appendUnsizedCellItems(items, withWidth: self.view.frame.width)
-
-        assignRightButtons()
-        Tracker.sharedTracker.profileLoaded(user.atName ?? "(no name)")
-    }
 
     private func updateNoPostsView(show: Bool) {
-        if !isViewLoaded() {
-            return
-        }
+        guard isViewLoaded() else { return }
 
         if show {
             noPostsView.hidden = false
@@ -440,51 +385,51 @@ public class ProfileViewController: StreamableViewController {
 // MARK: Check for cached coverImage and avatar (only for currentUser)
 extension ProfileViewController {
     public func cachedImage(key: CacheKey) -> UIImage? {
-        if user?.id == currentUser?.id {
-            return TemporaryCache.load(key)
+        guard user?.id == currentUser?.id else {
+            return nil
         }
-        return nil
+        return TemporaryCache.load(key)
     }
 
     public func updateCachedImages() {
-        if let cachedImage = cachedImage(.CoverImage) {
-            // this seemingly unecessary nil check is an attempt
-            // to guard against crash #6:
-            // https://www.crashlytics.com/ello/ios/apps/co.ello.ello/issues/55725749f505b5ccf00cf76d/sessions/55725654012a0001029d613137326264
-            if coverImage != nil {
-                coverImage.image = cachedImage
-                coverImage.alpha = 1.0
-            }
+        guard let cachedImage = cachedImage(.CoverImage) where coverImage != nil else {
+            return
         }
+
+        // this seemingly unecessary nil check is an attempt
+        // to guard against crash #6:
+        // https://www.crashlytics.com/ello/ios/apps/co.ello.ello/issues/55725749f505b5ccf00cf76d/sessions/55725654012a0001029d613137326264
+        coverImage.image = cachedImage
+        coverImage.alpha = 1.0
     }
 
     public func updateCurrentUser(user: User) {
-        if user.id == self.currentUser?.id {
-            // only update the avatar and coverImage assets if there is nothing
-            // in the cache.  If images are in the cache, that implies that the
-            // image could still be unprocessed, so don't set the avatar or
-            // coverImage to the old, stale value.
-            if cachedImage(.Avatar) == nil {
-                self.currentUser?.avatar = user.avatar
-            }
-
-            if cachedImage(.CoverImage) == nil {
-                self.currentUser?.coverImage = user.coverImage
-            }
-
-            elloNavigationItem.rightBarButtonItem = nil
-
-            mentionButton.hidden = true
-            relationshipControl.hidden = true
-            editButton.hidden = false
-            inviteButton.hidden = false
-        }
-        else {
+        guard user.id == self.currentUser?.id else {
             mentionButton.hidden = false
             relationshipControl.hidden = false
             editButton.hidden = true
             inviteButton.hidden = true
+            return
         }
+
+        // only update the avatar and coverImage assets if there is nothing
+        // in the cache.  If images are in the cache, that implies that the
+        // image could still be unprocessed, so don't set the avatar or
+        // coverImage to the old, stale value.
+        if cachedImage(.Avatar) == nil {
+            self.currentUser?.avatar = user.avatar
+        }
+
+        if cachedImage(.CoverImage) == nil {
+            self.currentUser?.coverImage = user.coverImage
+        }
+
+        elloNavigationItem.rightBarButtonItem = nil
+
+        mentionButton.hidden = true
+        relationshipControl.hidden = true
+        editButton.hidden = false
+        inviteButton.hidden = false
     }
 
     public func updateRelationshipPriority(relationshipPriority: RelationshipPriority) {
@@ -497,19 +442,17 @@ extension ProfileViewController {
 extension ProfileViewController: PostsTappedResponder {
     public func onPostsTapped() {
         let indexPath = NSIndexPath(forItem: 1, inSection: 0)
-        if streamViewController.dataSource.isValidIndexPath(indexPath) {
-            streamViewController.collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: UICollectionViewScrollPosition.Top, animated: true)
-        }
+        guard streamViewController.dataSource.isValidIndexPath(indexPath) else { return }
+        streamViewController.collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: UICollectionViewScrollPosition.Top, animated: true)
     }
 }
 
 // MARK: ProfileViewController: EditProfileResponder
 extension ProfileViewController: EditProfileResponder {
     public func onEditProfile() {
-        if let settings = UIStoryboard(name: "Settings", bundle: .None).instantiateInitialViewController() as? SettingsContainerViewController {
-            settings.currentUser = currentUser
-            navigationController?.pushViewController(settings, animated: true)
-        }
+        guard let settings = UIStoryboard(name: "Settings", bundle: .None).instantiateInitialViewController() as? SettingsContainerViewController else { return }
+        settings.currentUser = currentUser
+        navigationController?.pushViewController(settings, animated: true)
     }
 }
 
@@ -525,5 +468,66 @@ extension ProfileViewController {
         updateGradientViewConstraint()
 
         super.streamViewDidScroll(scrollView)
+    }
+}
+
+// MARK: ProfileViewController: StreamDestination
+extension ProfileViewController:  StreamDestination {
+
+    public func replacePlaceholder(type: StreamCellType.PlaceholderType, @autoclosure items: () -> [StreamCellItem]) {
+        streamViewController.replacePlaceholder(type, with: items)
+    }
+
+    public func setPlaceholders(items: [StreamCellItem]) {
+        streamViewController.clearForInitialLoad()
+        updateNoPostsView(items.count < 2)
+        streamViewController.appendUnsizedCellItems(items, withWidth: view.frame.width) { _ in }
+        assignRightButtons()
+    }
+
+    public func setPrimaryJSONAble(jsonable: JSONAble) {
+        guard let user = jsonable as? User else { return }
+
+        self.user = user
+        updateCurrentUser(user)
+
+        relationshipControl.userId = user.id
+        relationshipControl.userAtName = user.atName
+        relationshipControl.relationshipPriority = user.relationshipPriority
+
+        userParam = user.id
+        title = user.atName ?? InterfaceString.Profile.Title
+        if let cachedImage = cachedImage(.CoverImage) {
+            coverImage.image = cachedImage
+            self.coverImage.alpha = 1.0
+        }
+        else if let cover = user.coverImageURL(viewsAdultContent: currentUser?.viewsAdultContent, animated: true), coverImage = coverImage
+        {
+            coverImage.pin_setImageFromURL(cover) { result in
+                self.coverImage.alpha = 1.0
+            }
+        }
+
+        assignRightButtons()
+        Tracker.sharedTracker.profileLoaded(user.atName ?? "(no name)")
+
+    }
+
+    public func setPagingConfig(responseConfig: ResponseConfig) {
+        streamViewController.responseConfig = responseConfig
+    }
+
+    public func primaryJSONAbleNotFound() {
+        if let deeplinkPath = self.deeplinkPath,
+            deeplinkURL = NSURL(string: deeplinkPath)
+        {
+            UIApplication.sharedApplication().openURL(deeplinkURL)
+            self.deeplinkPath = nil
+            self.navigationController?.popViewControllerAnimated(true)
+        }
+        else {
+            self.showUserLoadFailure()
+        }
+        self.streamViewController.doneLoading()
     }
 }

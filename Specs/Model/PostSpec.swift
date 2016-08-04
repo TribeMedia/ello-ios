@@ -131,12 +131,12 @@ class PostSpec: QuickSpec {
                     expect(imageRegion.url?.absoluteString) == "http://www.example5.com"
                     expect(imageAsset.id) == "qwerty"
 
-                    let assetXXHDPI = imageAsset.xxhdpi!
-                    expect(assetXXHDPI.url.absoluteString) == "http://www.example2.com"
-                    expect(assetXXHDPI.width) == 10
-                    expect(assetXXHDPI.height) == 99
-                    expect(assetXXHDPI.size) == 986896
-                    expect(assetXXHDPI.type) == "png"
+                    let assetXhdpi = imageAsset.xhdpi!
+                    expect(assetXhdpi.url.absoluteString) == "http://www.example2.com"
+                    expect(assetXhdpi.width) == 10
+                    expect(assetXhdpi.height) == 99
+                    expect(assetXhdpi.size) == 986896
+                    expect(assetXhdpi.type) == "png"
 
                     let assetHDPI = imageAsset.hdpi!
                     expect(assetHDPI.url.absoluteString) == "http://www.example.com"
@@ -161,7 +161,7 @@ class PostSpec: QuickSpec {
                         "size" : 445566
                     ])
 
-                    let xxhdpi: Attachment = stub([
+                    let xhdpi: Attachment = stub([
                         "url" : NSURL(string: "http://www.example2.com")!,
                         "height" : 99,
                         "width" : 10,
@@ -172,7 +172,7 @@ class PostSpec: QuickSpec {
                     let asset: Asset = stub([
                         "id" : "qwerty",
                         "hdpi" : hdpi,
-                        "xxhdpi" : xxhdpi
+                        "xhdpi" : xhdpi
                     ])
 
                     let textRegion: TextRegion = stub([

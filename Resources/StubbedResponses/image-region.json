@@ -67,24 +67,6 @@
                             "width": 1500,
                             "height": 641
                         }
-                    },
-                    "xxhdpi": {
-                        "url": "https://example.com/85/xxhdpi.jpg",
-                        "metadata": {
-                            "size": 728689,
-                            "type": "image/jpeg",
-                            "width": 2560,
-                            "height": 1094
-                        }
-                    },
-                    "xxxhdpi": {
-                        "url": "https://example.com/85/xxxhdpi.jpg",
-                        "metadata": {
-                            "size": 728687,
-                            "type": "image/jpeg",
-                            "width": 2560,
-                            "height": 1094
-                        }
                     }
                 }
             }

@@ -65,15 +65,13 @@ public struct StreamNotification {
 }
 
 // MARK: StreamViewController
-public class StreamViewController: BaseElloViewController {
+public final class StreamViewController: BaseElloViewController {
 
     @IBOutlet weak public var collectionView: UICollectionView!
     @IBOutlet weak public var noResultsLabel: UILabel!
     @IBOutlet weak public var noResultsTopConstraint: NSLayoutConstraint!
     private let defaultNoResultsTopConstant: CGFloat = 113
     var canLoadNext = false
-
-    var streamables: [Streamable]?
 
     var currentJSONables = [JSONAble]()
 
@@ -110,9 +108,18 @@ public class StreamViewController: BaseElloViewController {
     var relationshipController: RelationshipController?
     public var responseConfig: ResponseConfig?
     public let streamService = StreamService()
+    lazy public var loadingToken: LoadingToken = {
+        var token = LoadingToken()
+        token.cancelLoadingClosure = {
+            self.doneLoading()
+        }
+        return token
+    }()
+
     public var pullToRefreshView: SSPullToRefreshView?
     var allOlderPagesLoaded = false
     public var initialLoadClosure: ElloEmptyCompletion?
+    public var reloadClosure: ElloEmptyCompletion?
     public var toggleClosure: ToggleClosure?
     var initialDataLoaded = false
     var parentTabBarController: ElloTabBarController? {
@@ -273,40 +280,42 @@ public class StreamViewController: BaseElloViewController {
     }
 
     public func replacePlaceholder(placeholderType: StreamCellType.PlaceholderType, @autoclosure with streamCellItemsGenerator: () -> [StreamCellItem]) {
-        if let indexPath = dataSource.indexPathForItem(StreamCellItem(type: .Placeholder(placeholderType))) {
-            let streamCellItems = streamCellItemsGenerator()
-            dataSource.replaceItem(at: indexPath, with: streamCellItems)
+        let streamCellItems = streamCellItemsGenerator()
+        for item in streamCellItems {
+            item.placeholderType = placeholderType
+        }
+
+        dataSource.calculateCellItems(streamCellItems, withWidth: view.frame.width) {
+            let indexPathsToReplace = self.dataSource.indexPathsForPlaceholderType(placeholderType)
+            guard indexPathsToReplace.count > 0 else { return }
+
+            let newIndexPaths = self.dataSource.replaceItems(at: indexPathsToReplace, with: streamCellItems)
+            UIView.setAnimationsEnabled(false)
+            self.collectionView.performBatchUpdates({
+                self.collectionView.deleteItemsAtIndexPaths(indexPathsToReplace)
+                self.collectionView.insertItemsAtIndexPaths(newIndexPaths)
+                }, completion: { finished in
+                    UIView.setAnimationsEnabled(true)
+            })
         }
     }
 
-    public var loadInitialPageLoadingToken: String = ""
-    public func resetInitialPageLoadingToken() -> String {
-        let newToken = NSUUID().UUIDString
-        loadInitialPageLoadingToken = newToken
-        return newToken
-    }
-    public func isValidInitialPageLoadingToken(token: String) -> Bool {
-        return loadInitialPageLoadingToken == token
-    }
+    public func loadInitialPage(reload reload: Bool = false) {
 
-    public func cancelInitialPage() {
-        resetInitialPageLoadingToken()
-        self.doneLoading()
-    }
-
-    public func loadInitialPage() {
-
-        if let initialLoadClosure = initialLoadClosure {
+        if let reloadClosure = reloadClosure where reload {
+            reloadClosure()
+        }
+        else if let initialLoadClosure = initialLoadClosure {
             initialLoadClosure()
         }
         else {
-            let localToken = resetInitialPageLoadingToken()
+            let localToken = loadingToken.resetInitialPageLoadingToken()
 
             streamService.loadStream(
                 streamKind.endpoint,
                 streamKind: streamKind,
                 success: { (jsonables, responseConfig) in
-                    guard self.isValidInitialPageLoadingToken(localToken) else { return }
+                    guard self.loadingToken.isValidInitialPageLoadingToken(localToken) else { return }
 
                     self.responseConfig = responseConfig
                     self.showInitialJSONAbles(jsonables)
@@ -391,7 +400,7 @@ public class StreamViewController: BaseElloViewController {
 // MARK: Private Functions
 
     private func initialLoadFailure() {
-        guard streamViewDelegate?.streamViewCustomLoadFailed() != true else {
+        guard streamViewDelegate?.streamViewCustomLoadFailed() == false else {
             return
         }
         self.doneLoading()
@@ -639,7 +648,6 @@ extension StreamViewController: ColumnToggleDelegate {
             // setting 'canLoadNext' to false will prevent pagination from triggering when this profile has no posts
             // triggering pagination at this time will, inexplicably, cause the cells to disappear
             canLoadNext = false
-            dataSource.removeAllCellItems()
             setupCollectionViewLayout()
 
             toggleClosure(isGridView)
@@ -713,7 +721,7 @@ extension StreamViewController: SSPullToRefreshViewDelegate {
 
     public func pullToRefreshViewDidStartLoading(view: SSPullToRefreshView!) {
         if pullToRefreshEnabled {
-            self.loadInitialPage()
+            self.loadInitialPage(reload: true)
         }
         else {
             pullToRefreshView?.finishLoading()
@@ -849,27 +857,25 @@ extension StreamViewController {
 extension StreamViewController: CategoryDelegate {
 
     public func categoryCellTapped(cell: UICollectionViewCell) {
-        guard let indexPath = collectionView.indexPathForCell(cell),
-           post = dataSource.jsonableForIndexPath(indexPath) as? Post,
-           category = post.category
-        else {
-            return
-        }
+        guard let
+            indexPath = collectionView.indexPathForCell(cell),
+            post = dataSource.jsonableForIndexPath(indexPath) as? Post,
+            category = post.category
+        else { return }
 
         categoryTapped(category)
     }
-
 }
 
 // MARK: StreamViewController: UserDelegate
 extension StreamViewController: UserDelegate {
 
     public func userTappedText(cell: UICollectionViewCell) {
-        if streamKind.tappingTextOpensDetail {
-            if let indexPath = collectionView.indexPathForCell(cell) {
-                collectionView(collectionView, didSelectItemAtIndexPath: indexPath)
-            }
-        }
+        guard !streamKind.tappingTextOpensDetail,
+            let indexPath = collectionView.indexPathForCell(cell)
+        else { return }
+
+        collectionView(collectionView, didSelectItemAtIndexPath: indexPath)
     }
 
     public func userTapped(user: User) {
@@ -877,19 +883,21 @@ extension StreamViewController: UserDelegate {
     }
 
     public func userTappedAuthor(cell: UICollectionViewCell) {
-        if let indexPath = collectionView.indexPathForCell(cell),
-           user = dataSource.userForIndexPath(indexPath)
-        {
-            userTapped(user)
-        }
+        guard let
+            indexPath = collectionView.indexPathForCell(cell),
+            user = dataSource.userForIndexPath(indexPath)
+        else { return }
+
+        userTapped(user)
     }
 
     public func userTappedReposter(cell: UICollectionViewCell) {
-        if let indexPath = collectionView.indexPathForCell(cell),
-           reposter = dataSource.reposterForIndexPath(indexPath)
-        {
-            userTapped(reposter)
-        }
+        guard let
+            indexPath = collectionView.indexPathForCell(cell),
+            reposter = dataSource.reposterForIndexPath(indexPath)
+        else { return }
+
+        userTapped(reposter)
     }
 
     public func userTappedParam(param: String) {
@@ -1000,10 +1008,13 @@ extension StreamViewController: WebLinkDelegate {
     }
 
     private func showSettings() {
-        if let settings = UIStoryboard(name: "Settings", bundle: .None).instantiateInitialViewController() as? SettingsContainerViewController {
-            settings.currentUser = currentUser
-            navigationController?.pushViewController(settings, animated: true)
-        }
+        guard let
+            settings = UIStoryboard(name: "Settings", bundle: .None).instantiateInitialViewController()
+                as? SettingsContainerViewController
+        else { return }
+
+        settings.currentUser = currentUser
+        navigationController?.pushViewController(settings, animated: true)
     }
 
     private func selectTab(tab: ElloTab) {
@@ -1064,10 +1075,11 @@ extension StreamViewController: UICollectionViewDelegate {
 
     public func collectionView(collectionView: UICollectionView,
         shouldSelectItemAtIndexPath indexPath: NSIndexPath) -> Bool {
-            if let cellItemType = dataSource.visibleStreamCellItem(at: indexPath)?.type {
-                return cellItemType.selectable
-            }
-            return false
+            guard
+                let cellItemType = dataSource.visibleStreamCellItem(at: indexPath)?.type
+            else { return false }
+
+            return cellItemType.selectable
     }
 }
 
@@ -1100,59 +1112,75 @@ extension StreamViewController: UIScrollViewDelegate {
     }
 
     private func loadNextPage(scrollView: UIScrollView) {
-        if scrollView.contentOffset.y + (self.view.frame.height * 1.666) > scrollView.contentSize.height {
-            if allOlderPagesLoaded == true { return }
-            if responseConfig?.totalPagesRemaining == "0" { return }
+        guard
+            scrollView.contentOffset.y + (self.view.frame.height * 1.666)
+            > scrollView.contentSize.height
+        else { return }
 
-            if let nextQueryItems = responseConfig?.nextQueryItems {
-                if dataSource.visibleCellItems.count > 0 {
-                    let lastCellItem: StreamCellItem = dataSource.visibleCellItems[dataSource.visibleCellItems.count - 1]
-                    if lastCellItem.type == .StreamLoading { return }
-                    appendStreamCellItems([StreamLoadingCell.streamCellItem()])
-                }
-                canLoadNext = false
+        guard
+            !allOlderPagesLoaded &&
+            responseConfig?.totalPagesRemaining != "0"
+        else { return }
 
-                let scrollAPI = ElloAPI.InfiniteScroll(queryItems: nextQueryItems) { return self.streamKind.endpoint }
-                streamService.loadStream(scrollAPI,
-                    streamKind: streamKind,
-                    success: {
-                        (jsonables, responseConfig) in
-                        self.scrollLoaded(jsonables)
-                        self.responseConfig = responseConfig
-                    },
-                    failure: { (error, statusCode) in
-                        print("failed to load stream (reason: \(error))")
-                        self.scrollLoaded()
-                    },
-                    noContent: {
-                        self.allOlderPagesLoaded = true
-                        self.scrollLoaded()
-                    })
-            }
-        }
+        guard let
+            nextQueryItems = responseConfig?.nextQueryItems
+        else { return }
+
+        guard let lastCellItem = dataSource.visibleCellItems.last
+            where lastCellItem.type != .StreamLoading
+        else { return }
+
+        let placeholderType = lastCellItem.placeholderType
+        appendStreamCellItems([StreamLoadingCell.streamCellItem()])
+
+        canLoadNext = false
+
+        let scrollAPI = ElloAPI.InfiniteScroll(queryItems: nextQueryItems) { return self.streamKind.endpoint }
+        streamService.loadStream(scrollAPI,
+            streamKind: streamKind,
+            success: {
+                (jsonables, responseConfig) in
+                self.scrollLoaded(jsonables, placeholderType: placeholderType)
+                self.responseConfig = responseConfig
+            },
+            failure: { (error, statusCode) in
+                print("failed to load stream (reason: \(error))")
+                self.scrollLoaded()
+            },
+            noContent: {
+                self.allOlderPagesLoaded = true
+                self.scrollLoaded()
+            })
     }
 
-    private func scrollLoaded(jsonables: [JSONAble] = []) {
-        if let lastIndexPath = collectionView.lastIndexPathForSection(0) {
-            if jsonables.count > 0 {
-                insertUnsizedCellItems(StreamCellItemParser().parse(jsonables, streamKind: streamKind, currentUser: currentUser), startingIndexPath: lastIndexPath) {
-                    self.removeLoadingCell()
-                    self.doneLoading()
-                }
+    private func scrollLoaded(jsonables: [JSONAble] = [], placeholderType: StreamCellType.PlaceholderType? = nil) {
+        guard
+            let lastIndexPath = collectionView.lastIndexPathForSection(0)
+        else { return }
+
+        if jsonables.count > 0 {
+            let items = StreamCellItemParser().parse(jsonables, streamKind: streamKind, currentUser: currentUser)
+            for item in items {
+                item.placeholderType = placeholderType
             }
-            else {
-                removeLoadingCell()
+            insertUnsizedCellItems(items, startingIndexPath: lastIndexPath) {
+                self.removeLoadingCell()
                 self.doneLoading()
             }
+        }
+        else {
+            removeLoadingCell()
+            self.doneLoading()
         }
     }
 
     private func removeLoadingCell() {
-        if let indexPath = self.collectionView.lastIndexPathForSection(0)
+        guard
+            let indexPath = self.collectionView.lastIndexPathForSection(0)
             where dataSource.visibleCellItems[indexPath.row].type == .StreamLoading
-        {
-            dataSource.removeItemAtIndexPath(indexPath)
-            collectionView.reloadData()
-        }
+        else { return }
+
+        dataSource.removeItemsAtIndexPaths([indexPath])
+        collectionView.reloadData()
     }
 }

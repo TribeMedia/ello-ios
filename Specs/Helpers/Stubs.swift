@@ -367,7 +367,6 @@ extension Asset: Stubbable {
         asset.mdpi = (values["mdpi"] as? Attachment) ?? defaultAttachment
         asset.hdpi = (values["hdpi"] as? Attachment) ?? defaultAttachment
         asset.xhdpi = (values["xhdpi"] as? Attachment) ?? defaultAttachment
-        asset.xxhdpi = (values["xxhdpi"] as? Attachment) ?? defaultAttachment
         asset.original = (values["original"] as? Attachment) ?? defaultAttachment
         asset.large = (values["large"] as? Attachment) ?? defaultAttachment
         asset.regular = (values["regular"] as? Attachment) ?? defaultAttachment

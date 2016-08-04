@@ -64,6 +64,7 @@ public enum ElloAPI {
     case UserStream(userParam: String)
     case UserStreamFollowers(userId: String)
     case UserStreamFollowing(userId: String)
+    case UserStreamPosts(userId: String)
     case UserNameAutoComplete(terms: String)
 
     public static let apiVersion = "v2"
@@ -126,7 +127,8 @@ public enum ElloAPI {
              .PostDetail,
              .RePost,
              .SearchForPosts,
-             .UpdatePost:
+             .UpdatePost,
+             .UserStreamPosts:
             return .PostsType
         case .EmojiAutoComplete,
              .UserNameAutoComplete:
@@ -348,6 +350,8 @@ extension ElloAPI: Moya.TargetType {
             return "\(ElloAPI.UserStream(userParam: userId).path)/followers"
         case let .UserStreamFollowing(userId):
             return "\(ElloAPI.UserStream(userParam: userId).path)/following"
+        case let .UserStreamPosts(userId):
+            return "\(ElloAPI.UserStream(userParam: userId).path)/posts"
         case .UserNameAutoComplete(_):
             return "/api/\(ElloAPI.apiVersion)/users/autocomplete"
         }
@@ -416,13 +420,15 @@ extension ElloAPI: Moya.TargetType {
             return stubbedData("posts_post_details")
         case .UpdateComment:
             return stubbedData("create-comment")
-        case .PostLovers,
-             .PostReposters,
-             .SearchForUsers,
+        case .SearchForUsers,
              .UserStream,
              .UserStreamFollowers,
              .UserStreamFollowing:
             return stubbedData("users_user_details")
+        case .PostLovers:
+            return stubbedData("posts_listing_users_who_have_loved_a_post")
+        case .PostReposters:
+            return stubbedData("posts_listing_users_who_have_reposted_a_post")
         case .PostReplyAll:
             return stubbedData("usernames")
         case .CurrentUserBlockedList:
@@ -451,6 +457,9 @@ extension ElloAPI: Moya.TargetType {
             return stubbedData("posts_searching_for_posts")
         case .UserNameAutoComplete:
             return stubbedData("users_getting_a_list_for_autocompleted_usernames")
+        case .UserStreamPosts:
+            //TODO: get post data to test
+            return stubbedData("users_posts")
         }
     }
 
@@ -667,6 +676,10 @@ extension ElloAPI: Moya.TargetType {
         case let .UserNameAutoComplete(terms):
             return [
                 "terms": terms
+            ]
+        case .UserStreamPosts:
+            return [
+                "per_page": 10
             ]
         default:
             return nil

@@ -72,10 +72,28 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
     }
 
     public func indexPathForItem(item: StreamCellItem) -> NSIndexPath? {
-        if let index = self.visibleCellItems.indexOf(item) {
+        if let index = self.visibleCellItems.indexOf({$0 == item}) {
             return NSIndexPath(forItem: index, inSection: 0)
         }
         return nil
+    }
+
+    public func indexPathsForPlaceholderType(placeholderType: StreamCellType.PlaceholderType) -> [NSIndexPath] {
+
+        guard let index = self.visibleCellItems.indexOf({$0.placeholderType == placeholderType}) else { return [] }
+
+        let indexPath = NSIndexPath(forItem: index, inSection: 0)
+        var indexPaths = [indexPath]
+        var position = indexPath.item
+        var found = true
+        while found && position < self.visibleCellItems.count - 1 {
+            position += 1
+            found = visibleCellItems[position].placeholderType == placeholderType
+            if found {
+                indexPaths.append(NSIndexPath(forItem: position, inSection: 0))
+            }
+        }
+        return indexPaths
     }
 
     public func userForIndexPath(indexPath: NSIndexPath) -> User? {
@@ -202,9 +220,15 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
         return indexPaths
     }
 
-    public func removeItemAtIndexPath(indexPath: NSIndexPath) {
-        if let itemToRemove = self.visibleCellItems.safeValue(indexPath.item) {
-            temporarilyUnfilter() {
+    public func removeItemsAtIndexPaths(indexPaths: [NSIndexPath]) {
+        var items: [StreamCellItem] = []
+        for indexPath in indexPaths {
+            if let itemToRemove = self.visibleCellItems.safeValue(indexPath.item) {
+                items.append(itemToRemove)
+            }
+        }
+        temporarilyUnfilter() {
+            for itemToRemove in items {
                 if let index = self.streamCellItems.indexOf(itemToRemove) {
                     self.streamCellItems.removeAtIndex(index)
                 }
@@ -384,7 +408,7 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
                 insertUnsizedCellItems(items, withWidth: UIWindow.windowWidth(), startingIndexPath: firstIndexPath) { newIndexPaths in
                     for wrongIndexPath in Array(oldIndexPaths.reverse()) {
                         let indexPath = NSIndexPath(forItem: wrongIndexPath.item + newIndexPaths.count, inSection: wrongIndexPath.section)
-                        self.removeItemAtIndexPath(indexPath)
+                        self.removeItemsAtIndexPaths([indexPath])
                     }
                     collectionView.performBatchUpdates({
                         collectionView.insertItemsAtIndexPaths(newIndexPaths)
@@ -405,7 +429,7 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
                 insertUnsizedCellItems(items, withWidth: UIWindow.windowWidth(), startingIndexPath: firstIndexPath) { newIndexPaths in
                     for wrongIndexPath in Array(oldIndexPaths.reverse()) {
                         let indexPath = NSIndexPath(forItem: wrongIndexPath.item + newIndexPaths.count, inSection: wrongIndexPath.section)
-                        self.removeItemAtIndexPath(indexPath)
+                        self.removeItemsAtIndexPaths([indexPath])
                     }
                     collectionView.performBatchUpdates({
                         collectionView.insertItemsAtIndexPaths(newIndexPaths)
@@ -626,9 +650,10 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
         insertUnsizedCellItems(cellItems, withWidth: withWidth, startingIndexPath: startingIndexPath, completion: completion)
     }
 
-    public func replaceItem(at indexPath: NSIndexPath, with streamCellItems: [StreamCellItem] = []) {
-        removeItemAtIndexPath(indexPath)
-        insertStreamCellItems(streamCellItems, startingIndexPath: indexPath)
+    public func replaceItems(at indexPaths: [NSIndexPath], with streamCellItems: [StreamCellItem]) -> [NSIndexPath] {
+        guard indexPaths.count > 0 else { return []}
+        removeItemsAtIndexPaths(indexPaths)
+        return insertStreamCellItems(streamCellItems, startingIndexPath: indexPaths[0])
     }
 
     public func insertStreamCellItems(cellItems: [StreamCellItem], startingIndexPath: NSIndexPath) -> [NSIndexPath] {
@@ -691,7 +716,7 @@ public class StreamDataSource: NSObject, UICollectionViewDataSource {
         return indexPath.item >= 0 &&  indexPath.item < visibleCellItems.count && indexPath.section == 0
     }
 
-    private func calculateCellItems(cellItems: [StreamCellItem], withWidth: CGFloat, completion: ElloEmptyCompletion) {
+    public func calculateCellItems(cellItems: [StreamCellItem], withWidth: CGFloat, completion: ElloEmptyCompletion) {
         let textCells = filterTextCells(cellItems)
         let imageCells = filterImageCells(cellItems)
         let notificationElements = cellItems.filter {

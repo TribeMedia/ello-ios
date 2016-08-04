@@ -69,24 +69,6 @@
                             "width": 1500,
                             "height": 641
                         }
-                    },
-                    "xxhdpi": {
-                        "url": "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/asset/attachment/5381/xxhdpi.jpg",
-                        "metadata": {
-                            "size": 728689,
-                            "type": "image/jpeg",
-                            "width": 2560,
-                            "height": 1094
-                        }
-                    },
-                    "xxxhdpi": {
-                        "url": "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/asset/attachment/5381/xxxhdpi.jpg",
-                        "metadata": {
-                            "size": 728687,
-                            "type": "image/jpeg",
-                            "width": 2560,
-                            "height": 1094
-                        }
                     }
                 }
             }

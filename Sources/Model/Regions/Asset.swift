@@ -20,19 +20,17 @@ public final class Asset: JSONAble {
     public var mdpi: Attachment?
     public var hdpi: Attachment?
     public var xhdpi: Attachment?
-    public var xxhdpi: Attachment?
     public var original: Attachment?
     // optional avatar
     public var largeOrBest: Attachment? {
         // we originally had this expressed via
-        // return large ?? optimized ?? xxhdpi ?? xhdpi ?? hdpi ?? regular
+        // return large ?? optimized ?? xhdpi ?? hdpi ?? regular
         //
         // unfortunately that took 12.4 seconds to compile
         // this (much more verbose) code compiles very quickly
         if let large = large { return large }
         if let optimized = optimized { return optimized }
-        if let xxhdpi = xxhdpi { return xxhdpi }
-        if let xhdpi = large { return xhdpi }
+        if let xhdpi = xhdpi { return xhdpi }
         if let hdpi = hdpi { return hdpi }
         if let regular = regular { return regular }
         return nil
@@ -124,7 +122,6 @@ public final class Asset: JSONAble {
         self.mdpi = decoder.decodeOptionalKey("mdpi")
         self.hdpi = decoder.decodeOptionalKey("hdpi")
         self.xhdpi = decoder.decodeOptionalKey("xhdpi")
-        self.xxhdpi = decoder.decodeOptionalKey("xxhdpi")
         self.original = decoder.decodeOptionalKey("original")
         // optional avatar
         self.large = decoder.decodeOptionalKey("large")
@@ -144,7 +141,6 @@ public final class Asset: JSONAble {
         coder.encodeObject(mdpi, forKey: "mdpi")
         coder.encodeObject(hdpi, forKey: "hdpi")
         coder.encodeObject(xhdpi, forKey: "xhdpi")
-        coder.encodeObject(xxhdpi, forKey: "xxhdpi")
         coder.encodeObject(original, forKey: "original")
         // optional avatar
         coder.encodeObject(large, forKey: "large")
@@ -181,9 +177,6 @@ public final class Asset: JSONAble {
         }
         if let xhdpi = node?["xhdpi"] as? [String: AnyObject] {
             asset.xhdpi = Attachment.fromJSON(xhdpi) as? Attachment
-        }
-        if let xxhdpi = node?["xxhdpi"] as? [String: AnyObject] {
-            asset.xxhdpi = Attachment.fromJSON(xxhdpi) as? Attachment
         }
         if let original = node?["original"] as? [String: AnyObject] {
             asset.original = Attachment.fromJSON(original) as? Attachment

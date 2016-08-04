@@ -33,7 +33,7 @@ public enum StreamCellType: Equatable {
     case InviteFriends
     case Notification
     case OnboardingHeader(data: (String, String)?)
-    case Placeholder(PlaceholderType)
+    case Placeholder
     case ProfileHeader
     case SeeMoreComments
     case Spacer(height: CGFloat)
@@ -48,9 +48,16 @@ public enum StreamCellType: Equatable {
     public enum PlaceholderType {
         case CategoryList
         case PeopleToFollow
-        case Lovers
-        case Reposters
-        case Comments
+
+        case ProfileHeader
+        case ProfilePosts
+
+        case PostCommentBar
+        case PostComments
+        case PostHeader
+        case PostLovers
+        case PostReposters
+        case PostSocialPadding
     }
 
     static let all = [
@@ -72,7 +79,7 @@ public enum StreamCellType: Equatable {
         SeeMoreComments,
         Spacer(height: 0.0),
         FullWidthSpacer(height: 0.0),
-        Placeholder(.Comments),
+        Placeholder,
         StreamLoading,
         Text(data: nil),
         Toggle,
@@ -93,42 +100,8 @@ public enum StreamCellType: Equatable {
     }
 
     // this is just stupid...
-    public var identifier: Int {
-        switch self {
-        case CommentHeader: return 0
-        case CreateComment: return 1
-        case Embed: return 2
-        case FollowAll: return 3
-        case Footer: return 4
-        case Header: return 5
-        case Image: return 6
-        case InviteFriends: return 7
-        case Notification: return 8
-        case OnboardingHeader: return 9
-        case let Placeholder(type):
-            switch type {
-            case .CategoryList: return 1001
-            case .PeopleToFollow: return 1002
-            case .Lovers: return 1003
-            case .Reposters: return 1004
-            case .Comments: return 1005
-            }
-        case ProfileHeader: return 11
-        case SeeMoreComments: return 12
-        case Spacer: return 13
-        case FullWidthSpacer: return 14
-        case StreamLoading: return 15
-        case Text: return 16
-        case Toggle: return 17
-        case Unknown: return 18
-        case UserAvatars: return 19
-        case UserListItem: return 20
-        case ColumnToggle: return 21
-        case Category: return 22
-        case CategoryCard: return 23
-        case SeeAllCategories: return 24
-        case CategoryList: return 25
-        }
+    public var identifier: String {
+        return "\(self)"
     }
 
     public var name: String {
@@ -202,7 +175,7 @@ public enum StreamCellType: Equatable {
         case Unknown: return ProfileHeaderCellPresenter.configure
         case UserAvatars: return UserAvatarsCellPresenter.configure
         case UserListItem: return UserListItemCellPresenter.configure
-        default: return { (_, _, _, _, _) in }
+        default: return { _ in }
         }
     }
 
@@ -332,7 +305,7 @@ public enum StreamCellType: Equatable {
             CreateComment,
             FollowAll(data: nil),
             Notification,
-            Placeholder(.Comments),
+            Placeholder,
             OnboardingHeader(data: nil),
             Spacer(height: 0.0),
             FullWidthSpacer(height: 0.0),

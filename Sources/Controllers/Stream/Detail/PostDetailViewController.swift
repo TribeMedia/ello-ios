@@ -1,9 +1,7 @@
 ////
 ///  PostDetailViewController.swift
 //
-
-public class PostDetailViewController: StreamableViewController {
-
+public final class PostDetailViewController: StreamableViewController {
     var post: Post?
     var postParam: String!
     var scrollToComment: ElloComment?
@@ -11,14 +9,18 @@ public class PostDetailViewController: StreamableViewController {
     var navigationBar: ElloNavigationBar!
     var localToken: String!
     var deeplinkPath: String?
+    var generator: PostDetailGenerator?
 
     required public init(postParam: String) {
         self.postParam = postParam
         super.init(nibName: nil, bundle: nil)
-        self.localToken = streamViewController.resetInitialPageLoadingToken()
-        ElloHUD.showLoadingHudInView(streamViewController.view)
-        streamViewController.initialLoadClosure = reloadEntirePostDetail
-        streamViewController.loadInitialPage()
+        if self.post == nil {
+            if let post = ElloLinkedStore.sharedInstance.getObject(self.postParam,
+                inCollection: MappingType.PostsType.rawValue) as? Post {
+                self.post = post
+            }
+        }
+        self.localToken = streamViewController.loadingToken.resetInitialPageLoadingToken()
     }
 
     required public init?(coder aDecoder: NSCoder) {
@@ -30,6 +32,18 @@ public class PostDetailViewController: StreamableViewController {
         setupNavigationBar()
         streamViewController.streamKind = .PostDetail(postParam: postParam)
         view.backgroundColor = .whiteColor()
+        self.generator = PostDetailGenerator(
+            currentUser: self.currentUser,
+            postParam: postParam,
+            post: self.post,
+            streamKind: self.streamViewController.streamKind,
+            destination: self
+        )
+        ElloHUD.showLoadingHudInView(streamViewController.view)
+        streamViewController.initialLoadClosure = loadEntirePostDetail
+        streamViewController.reloadClosure = reloadEntirePostDetail
+
+        streamViewController.loadInitialPage()
     }
 
     // used to provide StreamableViewController access to the container it then
@@ -40,6 +54,11 @@ public class PostDetailViewController: StreamableViewController {
 
     private func updateInsets() {
         updateInsets(navBar: navigationBar, streamController: streamViewController)
+    }
+
+    override public func didSetCurrentUser() {
+        generator?.currentUser = currentUser
+        super.didSetCurrentUser()
     }
 
     override public func showNavBars(scrollToBottom: Bool) {
@@ -60,29 +79,12 @@ public class PostDetailViewController: StreamableViewController {
 
     // MARK : private
 
-    private func reloadEntirePostDetail() {
-        localToken = streamViewController.resetInitialPageLoadingToken()
+    private func loadEntirePostDetail() {
+        generator?.load()
+    }
 
-        PostService().loadPost(
-            postParam,
-            needsComments: true,
-            success: { (post, responseConfig) in
-                if !self.streamViewController.isValidInitialPageLoadingToken(self.localToken) { return }
-                self.postLoaded(post, responseConfig: responseConfig)
-            },
-            failure: { (error, statusCode) in
-                if let deeplinkPath = self.deeplinkPath,
-                    deeplinkURL = NSURL(string: deeplinkPath)
-                {
-                    UIApplication.sharedApplication().openURL(deeplinkURL)
-                    self.deeplinkPath = nil
-                    self.navigationController?.popViewControllerAnimated(true)
-                }
-                else {
-                   self.showPostLoadFailure()
-                }
-                self.streamViewController.doneLoading()
-            })
+    private func reloadEntirePostDetail() {
+        generator?.load(reload: true)
     }
 
     private func showPostLoadFailure() {
@@ -107,101 +109,23 @@ public class PostDetailViewController: StreamableViewController {
     }
 
     private func assignRightButtons() {
-        if post == nil {
+        guard post != nil else {
             elloNavigationItem.rightBarButtonItems = []
+            return
         }
-        else {
-            if isOwnPost() {
-                elloNavigationItem.rightBarButtonItems = [
-                    UIBarButtonItem(image: .XBox, target: self, action: #selector(PostDetailViewController.deletePost)),
-                    UIBarButtonItem(image: .Pencil, target: self, action: #selector(PostDetailViewController.editPostAction)),
-                ]
-            }
-            else {
-                elloNavigationItem.rightBarButtonItems = [
-                    UIBarButtonItem(image: .Search, target: self, action: #selector(BaseElloViewController.searchButtonTapped)),
-                    UIBarButtonItem(image: .Dots, target: self, action: #selector(PostDetailViewController.flagPost)),
-                ]
-            }
-        }
-    }
-
-    private func postLoaded(post: Post, responseConfig: ResponseConfig) {
-        self.post = post
-        // need to reassign the userParam to the id for paging
-        postParam = post.id
-        // need to reassign the streamKind so that the comments can page based off the post.id from the ElloAPI.path
-        // same for when tapping on a post token in a post this will replace '~CRAZY-TOKEN' with the correct id for paging to work
-        streamViewController.streamKind = .PostDetail(postParam: postParam)
-        streamViewController.responseConfig = responseConfig
-        // clear out this view
-        streamViewController.clearForInitialLoad()
-        // set name
-        title = post.author?.atName ?? "Post Detail"
-        let parser = StreamCellItemParser()
-        var items = parser.parse([post], streamKind: streamViewController.streamKind, currentUser: currentUser)
-
-        var loversModel: UserAvatarCellModel?
-        // add lovers and reposters
-        if let lovers = post.lovesCount where lovers > 0 {
-            items.append(StreamCellItem(jsonable: JSONAble.fromJSON([:], fromLinked: false), type: .Spacer(height: 4.0)))
-            loversModel = UserAvatarCellModel(icon: .Heart, seeMoreTitle: InterfaceString.Post.LovedByList, indexPath: NSIndexPath(forItem: items.count, inSection: 0))
-            loversModel!.endpoint = .PostLovers(postId: post.id)
-            items.append(StreamCellItem(jsonable: loversModel!, type: .UserAvatars))
-        }
-        var repostersModel: UserAvatarCellModel?
-        if let reposters = post.repostsCount where reposters > 0 {
-            if loversModel == nil {
-                items.append(StreamCellItem(jsonable: JSONAble.fromJSON([:], fromLinked: false), type: .Spacer(height: 4.0)))
-            }
-            repostersModel = UserAvatarCellModel(icon: .Repost, seeMoreTitle: InterfaceString.Post.RepostedByList, indexPath: NSIndexPath(forItem: items.count, inSection: 0))
-            repostersModel!.endpoint = .PostReposters(postId: post.id)
-            items.append(StreamCellItem(jsonable: repostersModel!, type: .UserAvatars))
-        }
-
-        if loversModel != nil || repostersModel != nil {
-            items.append(StreamCellItem(jsonable: JSONAble.fromJSON([:], fromLinked: false), type: .Spacer(height: 8.0)))
-        }
-
-        // add in the comment button if we have a current user
-        let commentingEnabled = post.author?.hasCommentingEnabled ?? true
-        if let currentUser = currentUser where commentingEnabled {
-            items.append(StreamCellItem(jsonable: ElloComment.newCommentForPost(post, currentUser: currentUser), type: .CreateComment))
-        }
-
-        if let comments = post.comments {
-            items += parser.parse(comments, streamKind: streamViewController.streamKind, currentUser: currentUser)
-        }
-
-        if scrollLogic != nil {
-            scrollLogic.prevOffset = streamViewController.collectionView.contentOffset
-        }
-        // this calls doneLoading when cells are added
-        streamViewController.appendUnsizedCellItems(items, withWidth: view.frame.width) { _ in
-            if let lm = loversModel {
-                self.addAvatarsView(lm)
-            }
-
-            if let rm = repostersModel {
-                self.addAvatarsView(rm)
-            }
-
-            if let scrollToComment = self.scrollToComment {
-                // nextTick didn't work, the collection view hadn't shown its
-                // cells or updated contentView.  so this.
-                delay(0.1) {
-                    self.scrollToComment(scrollToComment)
-                }
-            }
-        }
-
-        assignRightButtons()
 
         if isOwnPost() {
-            showNavBars(false)
+            elloNavigationItem.rightBarButtonItems = [
+                UIBarButtonItem(image: .XBox, target: self, action: #selector(PostDetailViewController.deletePost)),
+                UIBarButtonItem(image: .Pencil, target: self, action: #selector(PostDetailViewController.editPostAction)),
+            ]
         }
-
-        Tracker.sharedTracker.postLoaded(post.id)
+        else {
+            elloNavigationItem.rightBarButtonItems = [
+                UIBarButtonItem(image: .Search, target: self, action: #selector(BaseElloViewController.searchButtonTapped)),
+                UIBarButtonItem(image: .Dots, target: self, action: #selector(PostDetailViewController.flagPost)),
+            ]
+        }
     }
 
     private func scrollToComment(comment: ElloComment) {
@@ -218,27 +142,9 @@ public class PostDetailViewController: StreamableViewController {
         }
     }
 
-    private func addAvatarsView(model: UserAvatarCellModel) {
-        if !streamViewController.isValidInitialPageLoadingToken(localToken) { return }
-        StreamService().loadStream(
-            model.endpoint!,
-            streamKind: streamViewController.streamKind,
-            success: { (jsonables, responseConfig) in
-                if !self.streamViewController.isValidInitialPageLoadingToken(self.localToken) { return }
-                if let users = jsonables as? [User] {
-                    model.users = users
-                    if self.streamViewController.initialDataLoaded {
-                        self.streamViewController.collectionView.reloadItemsAtIndexPaths([model.indexPath])
-                    }
-                }
-            })
-    }
-
     override public func postTapped(post: Post) {
-        if let selfPost = self.post {
-            if post.id != selfPost.id {
-                super.postTapped(post)
-            }
+        if let selfPost = self.post where post.id != selfPost.id {
+            super.postTapped(post)
         }
     }
 
@@ -250,9 +156,7 @@ public class PostDetailViewController: StreamableViewController {
     }
 
     public func flagPost() {
-        guard let post = post else {
-            return
-        }
+        guard let post = post else { return }
 
         let flagger = ContentFlagger(presentingController: self,
             flaggableId: post.id,
@@ -302,4 +206,73 @@ public class PostDetailViewController: StreamableViewController {
         self.presentViewController(alertController, animated: true, completion: .None)
     }
 
+}
+
+// MARK: PostDetailViewController: StreamDestination
+extension PostDetailViewController: StreamDestination {
+
+    public func replacePlaceholder(type: StreamCellType.PlaceholderType, @autoclosure items: () -> [StreamCellItem]) {
+        streamViewController.replacePlaceholder(type, with: items)
+    }
+
+    public func setPlaceholders(items: [StreamCellItem]) {
+        streamViewController.clearForInitialLoad()
+        streamViewController.appendUnsizedCellItems(items, withWidth: view.frame.width) { _ in
+            if let scrollToComment = self.scrollToComment {
+                // nextTick didn't work, the collection view hadn't shown its
+                // cells or updated contentView.  so this.
+                delay(0.1) {
+                    self.scrollToComment(scrollToComment)
+                }
+            }
+        }
+    }
+
+    public func setPrimaryJSONAble(jsonable: JSONAble) {
+        guard let post = jsonable as? Post else { return }
+
+        self.post = post
+
+        // need to reassign the userParam to the id for paging
+        self.postParam = post.id
+
+        /*
+         - need to reassign the streamKind so that the comments
+         can page based off the post.id from the ElloAPI.path
+
+         - same for when tapping on a post token in a post this
+         will replace '~CRAZY-TOKEN' with the correct id for
+         paging to work
+         */
+
+        streamViewController.streamKind = .PostDetail(postParam: postParam)
+
+        self.title = post.author?.atName ?? InterfaceString.Post.DefaultTitle
+
+        assignRightButtons()
+
+        if isOwnPost() {
+            showNavBars(false)
+        }
+
+        Tracker.sharedTracker.postLoaded(post.id)
+    }
+
+    public func setPagingConfig(responseConfig: ResponseConfig) {
+        streamViewController.responseConfig = responseConfig
+    }
+
+    public func primaryJSONAbleNotFound() {
+        if let deeplinkPath = self.deeplinkPath,
+            deeplinkURL = NSURL(string: deeplinkPath)
+        {
+            UIApplication.sharedApplication().openURL(deeplinkURL)
+            self.deeplinkPath = nil
+            self.navigationController?.popViewControllerAnimated(true)
+        }
+        else {
+            self.showPostLoadFailure()
+        }
+        self.streamViewController.doneLoading()
+    }
 }

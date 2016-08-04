@@ -1,5 +1,5 @@
 {
-    "posts": {
+    "posts": [{
         "id": "526",
         "href": "/api/edge/posts/1",
         "token": "ibLWX5p5fPBfzE8GmfOG6w",
@@ -51,7 +51,7 @@
             },
             "assets" : ["85"]
         }
-    },
+    }],
     "linked": {
         "assets": [
             {
@@ -109,6 +109,24 @@
                             "type": "image/jpeg",
                             "width": 1500,
                             "height": 641
+                        }
+                    },
+                    "xxhdpi": {
+                        "url": "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/asset/attachment/85/xxhdpi.jpg",
+                        "metadata": {
+                            "size": 728689,
+                            "type": "image/jpeg",
+                            "width": 2560,
+                            "height": 1094
+                        }
+                    },
+                    "xxxhdpi": {
+                        "url": "https://d1qqdyhbrvi5gr.cloudfront.net/uploads/asset/attachment/85/xxxhdpi.jpg",
+                        "metadata": {
+                            "size": 728687,
+                            "type": "image/jpeg",
+                            "width": 2560,
+                            "height": 1094
                         }
                     }
                 }

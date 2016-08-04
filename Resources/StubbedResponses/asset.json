@@ -11,6 +11,15 @@
                     "height": 1094
                 }
             },
+            "original": {
+                "url": "//example.com/5381/original.jpg",
+                "metadata": {
+                    "size": 728689,
+                    "type": "image/jpeg",
+                    "width": 2560,
+                    "height": 1094
+                }
+            },
             "small_screen": {
                 "url": "//example.com/5381/small_screen.jpg",
                 "metadata": {
@@ -54,24 +63,6 @@
                     "type": "image/jpeg",
                     "width": 1500,
                     "height": 641
-                }
-            },
-            "xxhdpi": {
-                "url": "https://example.com/5381/xxhdpi.jpg",
-                "metadata": {
-                    "size": 728689,
-                    "type": "image/jpeg",
-                    "width": 2560,
-                    "height": 1094
-                }
-            },
-            "xxxhdpi": {
-                "url": "https://example.com/5381/xxxhdpi.jpg",
-                "metadata": {
-                    "size": 728687,
-                    "type": "image/jpeg",
-                    "width": 2560,
-                    "height": 1094
                 }
             }
         }

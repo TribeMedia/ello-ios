@@ -667,11 +667,12 @@ extension AppViewController {
     }
 
     private func pushDeepLinkViewController(vc: UIViewController) {
-        if let tabController = self.visibleViewController as? ElloTabBarController {
-            if let navController = tabController.selectedViewController as? UINavigationController {
-                navController.pushViewController(vc, animated: true)
-            }
-        }
+        guard let
+            tabController = self.visibleViewController as? ElloTabBarController,
+            navController = tabController.selectedViewController as? UINavigationController
+        else { return }
+
+        navController.pushViewController(vc, animated: true)
     }
 
     private func selectTab(tab: ElloTab) {

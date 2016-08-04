@@ -45,7 +45,6 @@ class AssetSpec: QuickSpec {
                 expect(asset.id) == "5381"
 
                 let optimized = asset.optimized!
-
                 expect(optimized.url.absoluteString) == "https://example.com/5381/optimized.jpg"
                 expect(optimized.size) == 728689
                 expect(optimized.type) == "image/jpeg"
@@ -53,7 +52,6 @@ class AssetSpec: QuickSpec {
                 expect(optimized.height) == 1094
 
                 let smallScreen = asset.smallScreen!
-
                 expect(smallScreen.url.absoluteString) == "https://example.com/5381/small_screen.jpg"
                 expect(smallScreen.size) == 58160
                 expect(smallScreen.type) == "image/jpeg"
@@ -61,7 +59,6 @@ class AssetSpec: QuickSpec {
                 expect(smallScreen.height) == 274
 
                 let ldpi = asset.ldpi!
-
                 expect(ldpi.url.absoluteString) == "https://example.com/5381/ldpi.jpg"
                 expect(ldpi.size) == 4437
                 expect(ldpi.type) == "image/jpeg"
@@ -69,7 +66,6 @@ class AssetSpec: QuickSpec {
                 expect(ldpi.height) == 64
 
                 let mdpi = asset.mdpi!
-
                 expect(mdpi.url.absoluteString) == "https://example.com/5381/mdpi.jpg"
                 expect(mdpi.size) == 21813
                 expect(mdpi.type) == "image/jpeg"
@@ -77,7 +73,6 @@ class AssetSpec: QuickSpec {
                 expect(mdpi.height) == 160
 
                 let hdpi = asset.hdpi!
-
                 expect(hdpi.url.absoluteString) == "https://example.com/5381/hdpi.jpg"
                 expect(hdpi.size) == 77464
                 expect(hdpi.type) == "image/jpeg"
@@ -85,28 +80,18 @@ class AssetSpec: QuickSpec {
                 expect(hdpi.height) == 321
 
                 let xhdpi = asset.xhdpi!
-
                 expect(xhdpi.url.absoluteString) == "https://example.com/5381/xhdpi.jpg"
                 expect(xhdpi.size) == 274363
                 expect(xhdpi.type) == "image/jpeg"
                 expect(xhdpi.width) == 1500
                 expect(xhdpi.height) == 641
 
-                let xxhdpi = asset.xxhdpi!
-
-                expect(xxhdpi.url.absoluteString) == "https://example.com/5381/xxhdpi.jpg"
-                expect(xxhdpi.size) == 728689
-                expect(xxhdpi.type) == "image/jpeg"
-                expect(xxhdpi.width) == 2560
-                expect(xxhdpi.height) == 1094
-//
-//                let original = asset.original!
-//
-//                expect(original.url.absoluteString) == "https://example.com/5381/xxxhdpi.jpg"
-//                expect(original.size) == 728687
-//                expect(original.type) == "image/jpeg"
-//                expect(original.width) == 2560
-//                expect(original.height) == 1094
+                let original = asset.original!
+                expect(original.url.absoluteString) == "https://example.com/5381/original.jpg"
+                expect(original.size) == 728689
+                expect(original.type) == "image/jpeg"
+                expect(original.width) == 2560
+                expect(original.height) == 1094
             }
         }
 
@@ -189,14 +174,6 @@ class AssetSpec: QuickSpec {
                         "size" : 666666
                     ])
 
-                    let xxhdpi: Attachment = stub([
-                        "url" : NSURL(string: "http://www.example7.com")!,
-                        "height" : 70,
-                        "width" : 80,
-                        "type" : "png",
-                        "size" : 777777
-                    ])
-
                     let original: Attachment = stub([
                         "url" : NSURL(string: "http://www.example8.com")!,
                         "height" : 80,
@@ -213,7 +190,6 @@ class AssetSpec: QuickSpec {
                         "mdpi" : mdpi,
                         "hdpi" : hdpi,
                         "xhdpi" : xhdpi,
-                        "xxhdpi" : xxhdpi,
                         "original" : original
                     ])
 
@@ -272,14 +248,6 @@ class AssetSpec: QuickSpec {
                     expect(unArchivedxhdpi.height) == 60
                     expect(unArchivedxhdpi.size) == 666666
                     expect(unArchivedxhdpi.type) == "jpeg"
-
-                    let unArchivedxxhdpi = unArchivedAsset.xxhdpi!
-
-                    expect(unArchivedxxhdpi.url.absoluteString) == "http://www.example7.com"
-                    expect(unArchivedxxhdpi.width) == 80
-                    expect(unArchivedxxhdpi.height) == 70
-                    expect(unArchivedxxhdpi.size) == 777777
-                    expect(unArchivedxxhdpi.type) == "png"
 
                     let unArchivedOriginal = unArchivedAsset.original!
 
